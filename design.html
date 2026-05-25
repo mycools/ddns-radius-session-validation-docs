@@ -304,7 +304,7 @@ User-Name: 9612138730@fiberhome</pre>
         <pre class="mt-5 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm overflow-x-auto">CREATE TABLE RadiusAccountingSessions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
 
-    username VARCHAR(255) NOT NULL,
+    internet_no VARCHAR(255) NOT NULL,
     session_id VARCHAR(255) NOT NULL,
 
     cpe_ip VARCHAR(64),
@@ -325,9 +325,9 @@ User-Name: 9612138730@fiberhome</pre>
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,
 
-    INDEX idx_username (username),
+    INDEX idx_internet_no (internet_no),
     INDEX idx_session_id (session_id),
-    INDEX idx_active (username, is_active)
+    INDEX idx_active (internet_no, is_active)
 );</pre>
       </section>
 
