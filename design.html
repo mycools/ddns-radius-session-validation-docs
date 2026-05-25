@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDNS Enhancement Design - Radius Accounting Session Validation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+
+    @page {
+      size: A4;
+      margin: 14mm 12mm;
+    }
+
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-size: 11px !important;
+        line-height: 1.45 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      header {
+        background: #0f172a !important;
+        color: #ffffff !important;
+        page-break-after: avoid;
+      }
+
+      header > div {
+        max-width: none !important;
+        padding: 12mm 8mm !important;
+      }
+
+      header h1 {
+        font-size: 24px !important;
+        line-height: 1.2 !important;
+      }
+
+      header p {
+        font-size: 12px !important;
+        line-height: 1.6 !important;
+      }
+
+      aside {
+        display: none !important;
+      }
+
+      main {
+        display: block !important;
+        max-width: none !important;
+        width: 100% !important;
+        padding: 8mm 0 0 0 !important;
+      }
+
+      main > section {
+        display: block !important;
+        width: 100% !important;
+      }
+
+      section[id] {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        margin-bottom: 8mm !important;
+        padding: 5mm !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+      }
+
+      #sec-3,
+      #sec-5,
+      #sec-7,
+      #sec-10,
+      #sec-13 {
+        page-break-before: auto;
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      h2 {
+        font-size: 17px !important;
+        line-height: 1.25 !important;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+
+      h3 {
+        font-size: 13px !important;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+
+      p, li {
+        font-size: 11px !important;
+        line-height: 1.55 !important;
+      }
+
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tr, td, th {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      th, td {
+        padding: 5px 6px !important;
+        font-size: 9.5px !important;
+        line-height: 1.35 !important;
+      }
+
+      pre, code {
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        overflow: visible !important;
+        font-size: 8.5px !important;
+        line-height: 1.35 !important;
+      }
+
+      pre {
+        padding: 8px !important;
+        border-radius: 6px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+        max-height: none !important;
+      }
+
+      .grid {
+        display: block !important;
+      }
+
+      .grid > * + * {
+        margin-top: 8px !important;
+      }
+
+      .shadow-sm,
+      .shadow,
+      .shadow-md,
+      .shadow-lg {
+        box-shadow: none !important;
+      }
+
+      .rounded-2xl,
+      .rounded-xl,
+      .rounded-lg {
+        border-radius: 7px !important;
+      }
+
+      .overflow-x-auto {
+        overflow: visible !important;
+      }
+
+      #sec-7 .grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+
+      #sec-7 .space-y-6 > * + *,
+      #sec-7 .space-y-3 > * + * {
+        margin-top: 6px !important;
+      }
+
+      #sec-13 pre:first-of-type {
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      a {
+        color: inherit !important;
+        text-decoration: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <header class="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white">
+    <div class="max-w-7xl mx-auto px-6 py-10">
+      <div class="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-4 py-1 text-sm text-blue-100 mb-5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        DDNS Enhancement Design
+      </div>
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight">Radius Accounting Session Validation</h1>
+      <p class="mt-4 max-w-3xl text-slate-300 text-lg">
+        เอกสารออกแบบ Workflow, Deployment, Testing และตัวอย่าง Node.js TypeScript Script สำหรับแก้ปัญหา Radius Accounting Packet ไม่เรียงลำดับ FIFO
+      </p>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8">
+    <aside class="hidden lg:block">
+      <nav class="sticky top-6 rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+        <h2 class="font-semibold text-slate-900 mb-3">สารบัญ</h2>
+        <ol class="space-y-2 text-sm text-slate-600">
+          <li><a class="hover:text-blue-700" href="#sec-1">1. วัตถุประสงค์</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-2">2. ปัญหาปัจจุบัน</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-3">3. Radius Payload</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-4">4. แนวทางแก้ไข</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-5">5. Database Design</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-6">6. Workflow Logic</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-7">7. Flow Chart</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-8">8. Deployment Strategy</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-9">9. ENV Configuration</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-10">10. Testing Plan</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-11">11. Monitoring Plan</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-12">12. Rollback Plan</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-13">13. Node.js TS Test Script</a></li>
+          <li><a class="hover:text-blue-700" href="#sec-14">14. Expected Result</a></li>
+        </ol>
+      </nav>
+    </aside>
+
+    <section class="space-y-8">
+      <section id="sec-1" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">1. วัตถุประสงค์</h2>
+        <p class="mt-4 leading-8">
+          ปรับปรุงระบบ DDNS เพื่อแก้ปัญหา Radius Accounting ส่งข้อมูลไม่เป็นลำดับ FIFO โดยเฉพาะกรณี Router ทำงานผิดปกติและเกิด Session Change ทำให้ระบบได้รับ <strong>Start Session ใหม่</strong> มาก่อน <strong>Stop Session เก่า</strong>
+        </p>
+        <div class="mt-5 rounded-xl bg-red-50 border border-red-200 p-4 text-red-800">
+          ผลกระทบปัจจุบันคือระบบ DDNS อาจเข้าใจผิดว่า User Offline และ Clear <code class="font-semibold">CPE IP</code> ผิด Session
+        </div>
+      </section>
+
+      <section id="sec-2" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">2. ปัญหาปัจจุบัน</h2>
+        <p class="mt-4 leading-8">ปัจจุบันระบบใช้ Logic จาก Radius Accounting Packet โดยตรง:</p>
+        <pre class="mt-4 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">Start -&gt; Online
+Stop  -&gt; Offline + Clear CPE IP</pre>
+        <p class="mt-4 leading-8">แต่ในบางกรณี Radius ส่ง Packet ไม่เรียงลำดับ เช่น:</p>
+        <pre class="mt-4 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">Start Session B
+Stop Session A</pre>
+        <ul class="mt-4 list-disc pl-6 leading-8">
+          <li>Session B กำลัง Active อยู่</li>
+          <li>แต่ Stop ของ Session A ทำให้ระบบ Clear CPE IP</li>
+          <li>User ถูกมองว่า Offline ผิดพลาด</li>
+        </ul>
+      </section>
+
+      <section id="sec-3" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">3. ตัวอย่าง Radius Accounting Payload</h2>
+        <p class="mt-4 leading-8">ตัวอย่าง Payload จริงเป็น Accounting-Request แบบ <strong>Stop</strong> โดย Field สำคัญมีดังนี้</p>
+        <div class="mt-5 overflow-x-auto">
+          <table class="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+            <thead class="bg-slate-100 text-slate-900">
+              <tr>
+                <th class="text-left p-3 border-b">Radius AVP</th>
+                <th class="text-left p-3 border-b">Description</th>
+                <th class="text-left p-3 border-b">Usage</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr><td class="p-3 font-mono">User-Name</td><td class="p-3">Username / Internet No</td><td class="p-3">Customer Identifier</td></tr>
+              <tr><td class="p-3 font-mono">Acct-Status-Type</td><td class="p-3">Start / Stop / Interim-Update</td><td class="p-3">Event Type</td></tr>
+              <tr><td class="p-3 font-mono">Acct-Session-Id</td><td class="p-3">Radius Session ID</td><td class="p-3">Active Session Validation</td></tr>
+              <tr><td class="p-3 font-mono">Framed-IP-Address</td><td class="p-3">Customer WAN IP</td><td class="p-3">DDNS CPE IP</td></tr>
+              <tr><td class="p-3 font-mono">Event-Timestamp</td><td class="p-3">Packet Time</td><td class="p-3">Event Time</td></tr>
+              <tr><td class="p-3 font-mono">NAS-IP-Address</td><td class="p-3">NAS IP</td><td class="p-3">Source NAS</td></tr>
+              <tr><td class="p-3 font-mono">NAS-Identifier</td><td class="p-3">NAS Node</td><td class="p-3">NAS Identifier</td></tr>
+              <tr><td class="p-3 font-mono">Acct-Terminate-Cause</td><td class="p-3">Stop Reason</td><td class="p-3">Debugging</td></tr>
+              <tr><td class="p-3 font-mono">Huawei-User-Mac</td><td class="p-3">CPE MAC Address</td><td class="p-3">Device Reference</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre class="mt-5 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">Acct-Status-Type: Stop(2)
+Acct-Session-Id: KKNKKN5141002370000279a5ae9AACt98
+Framed-IP-Address: 10.181.6.70
+User-Name: 9612138730@fiberhome</pre>
+        <pre class="mt-4 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">{
+  "eventType": "Stop",
+  "sessionId": "KKNKKN5141002370000279a5ae9AACt98",
+  "cpeIp": "10.181.6.70",
+  "username": "9612138730@fiberhome"
+}</pre>
+      </section>
+
+      <section id="sec-4" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">4. แนวทางแก้ไข</h2>
+        <p class="mt-4 leading-8">เพิ่มระบบจัดการ Active Session โดยสร้าง Table ใหม่ชื่อ:</p>
+        <pre class="mt-4 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">RadiusAccountingSessions</pre>
+        <p class="mt-4 leading-8">
+          Table นี้ใช้เก็บ Current Active Session ของแต่ละลูกค้า และใช้ตรวจสอบว่า Packet ที่เข้ามาเป็นของ Active Session ปัจจุบันหรือไม่ ก่อนจะ Update DDNS หรือ Clear CPE IP
+        </p>
+      </section>
+
+      <section id="sec-5" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">5. Database Design</h2>
+        <pre class="mt-5 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm overflow-x-auto">CREATE TABLE RadiusAccountingSessions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+    username VARCHAR(255) NOT NULL,
+    session_id VARCHAR(255) NOT NULL,
+
+    cpe_ip VARCHAR(64),
+    user_mac VARCHAR(64),
+
+    nas_ip VARCHAR(64),
+    nas_identifier VARCHAR(255),
+
+    status ENUM('Start','Interim-Update','Stop') NOT NULL,
+
+    started_at DATETIME NULL,
+    last_interim_at DATETIME NULL,
+    stopped_at DATETIME NULL,
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_username (username),
+    INDEX idx_session_id (session_id),
+    INDEX idx_active (username, is_active)
+);</pre>
+      </section>
+
+      <section id="sec-6" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">6. Workflow Logic</h2>
+        <div class="grid md:grid-cols-3 gap-4 mt-5">
+          <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+            <h3 class="font-bold text-emerald-900">Start</h3>
+            <ol class="mt-3 list-decimal pl-5 text-sm leading-7">
+              <li>Receive Radius Start</li>
+              <li>Insert/Update Active Session</li>
+              <li>Update DDNS CPE IP จาก Framed-IP-Address</li>
+              <li>Handle Duplicate CPE IP</li>
+            </ol>
+          </div>
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-4">
+            <h3 class="font-bold text-amber-900">Interim-Update</h3>
+            <ol class="mt-3 list-decimal pl-5 text-sm leading-7">
+              <li>Find Active Session</li>
+              <li>Compare Session ID</li>
+              <li>If match: update last_update</li>
+              <li>If not match: Noop</li>
+            </ol>
+          </div>
+          <div class="rounded-xl bg-red-50 border border-red-200 p-4">
+            <h3 class="font-bold text-red-900">Stop</h3>
+            <ol class="mt-3 list-decimal pl-5 text-sm leading-7">
+              <li>Find Active Session</li>
+              <li>Compare Session ID</li>
+              <li>If match: stamp Stop + clear CPE IP</li>
+              <li>If not match: Noop</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-7" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">7. Flow Chart</h2>
+        <p class="mt-4 leading-8">Workflow ของ Radius Accounting Session Validation แสดงเป็น Responsive Flow เพื่อไม่ให้ล้นหน้าจอ</p>
+
+        <div class="mt-6 space-y-6">
+          <div class="mx-auto max-w-md rounded-2xl border-2 border-blue-300 bg-blue-50 p-5 text-center shadow-sm">
+            <div class="text-sm font-semibold text-blue-700">Step 1</div>
+            <div class="mt-1 text-lg font-bold text-blue-950">Receive Radius Accounting Packet</div>
+          </div>
+
+          <div class="flex justify-center text-slate-400 text-3xl">↓</div>
+
+          <div class="mx-auto max-w-md rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 text-center shadow-sm">
+            <div class="text-sm font-semibold text-amber-700">Decision</div>
+            <div class="mt-1 text-lg font-bold text-amber-950">Accounting Type?</div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <div class="rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white inline-block">Start</div>
+              <div class="mt-5 space-y-3">
+                <div class="rounded-xl bg-white border border-emerald-200 p-4 text-center font-semibold text-emerald-950">Insert / Update Active Session ID</div>
+                <div class="text-center text-emerald-500 text-2xl">↓</div>
+                <div class="rounded-xl bg-white border border-emerald-200 p-4 text-center font-semibold text-emerald-950">Check Duplicate CPE IP</div>
+                <div class="text-center text-emerald-500 text-2xl">↓</div>
+                <div class="rounded-xl bg-white border border-emerald-200 p-4 text-center font-semibold text-emerald-950"><div>Update DDNS Status = Start</div>
+                <div class="mt-2 text-sm font-medium text-slate-600">Update cpe_ip จาก Framed-IP-Address</div></div>
+                <div class="text-center text-emerald-500 text-2xl">↓</div>
+                <div class="rounded-xl bg-emerald-600 p-4 text-center font-bold text-white">End</div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <div class="rounded-full bg-amber-600 px-3 py-1 text-sm font-bold text-white inline-block">Interim-Update</div>
+              <div class="mt-5 space-y-3">
+                <div class="rounded-xl bg-white border border-amber-200 p-4 text-center font-semibold text-amber-950">Find Active Session</div>
+                <div class="text-center text-amber-500 text-2xl">↓</div>
+                <div class="rounded-xl bg-white border border-amber-200 p-4 text-center font-semibold text-amber-950">Session ID Match?</div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div class="rounded-xl bg-white border border-amber-200 p-3 text-center">
+                    <div class="font-bold text-emerald-700">Yes</div>
+                    <div class="mt-1 text-slate-700">Update last_update</div>
+                    <div class="mt-1 text-slate-700">Status = Interim</div>
+                  </div>
+                  <div class="rounded-xl bg-white border border-amber-200 p-3 text-center">
+                    <div class="font-bold text-red-700">No</div>
+                    <div class="mt-1 text-slate-700">Noop</div>
+                  </div>
+                </div>
+                <div class="rounded-xl bg-amber-600 p-4 text-center font-bold text-white">End</div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+              <div class="rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white inline-block">Stop</div>
+              <div class="mt-5 space-y-3">
+                <div class="rounded-xl bg-white border border-red-200 p-4 text-center font-semibold text-red-950">Find Active Session</div>
+                <div class="text-center text-red-500 text-2xl">↓</div>
+                <div class="rounded-xl bg-white border border-red-200 p-4 text-center font-semibold text-red-950">Session ID Match?</div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div class="rounded-xl bg-white border border-red-200 p-3 text-center">
+                    <div class="font-bold text-emerald-700">Yes</div>
+                    <div class="mt-1 text-slate-700">Stamp Stop</div>
+                    <div class="mt-1 text-slate-700">Clear CPE IP</div>
+                    <div class="mt-1 text-slate-700">Status = Stop</div>
+                  </div>
+                  <div class="rounded-xl bg-white border border-red-200 p-3 text-center">
+                    <div class="font-bold text-red-700">No</div>
+                    <div class="mt-1 text-slate-700">Noop</div>
+                  </div>
+                </div>
+                <div class="rounded-xl bg-red-600 p-4 text-center font-bold text-white">End</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-8" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">8. Deployment Strategy</h2>
+        <div class="mt-5 grid md:grid-cols-2 gap-5">
+          <div class="rounded-xl border border-blue-200 bg-blue-50 p-5">
+            <h3 class="text-xl font-bold text-blue-950">Phase 1 — Collect Session IDs</h3>
+            <p class="mt-3 leading-7">เริ่มเก็บ Session ID ก่อน โดยยังไม่เปิดใช้งาน Validation Logic เป็นระยะเวลาประมาณ 2 สัปดาห์</p>
+            <pre class="mt-4 rounded-lg bg-slate-950 text-slate-100 p-3 text-sm">ENABLE_RADIUS_SESSION_VALIDATION=false
+ENABLE_CLEAR_DUPLICATE_CPE_ON_START=false</pre>
+            <ol class="mt-4 list-decimal pl-5 leading-8">
+              <li>Deploy Database Table ใหม่</li>
+              <li>Deploy Radius Accounting Service ทีละเครื่อง</li>
+              <li>Config A10 ให้ส่ง Accounting ไปเครื่องอื่นก่อน Deploy</li>
+              <li>Verify Health Check และ Logs</li>
+              <li>Rotate Traffic กลับ</li>
+            </ol>
+          </div>
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <h3 class="text-xl font-bold text-emerald-950">Phase 2 — Enable Session Validation</h3>
+            <p class="mt-3 leading-7">เปิดใช้งาน Active Session Validation Logic และ Duplicate CPE Clear Logic</p>
+            <pre class="mt-4 rounded-lg bg-slate-950 text-slate-100 p-3 text-sm">ENABLE_RADIUS_SESSION_VALIDATION=true
+ENABLE_CLEAR_DUPLICATE_CPE_ON_START=true</pre>
+            <ol class="mt-4 list-decimal pl-5 leading-8">
+              <li>Deploy เฉพาะ Radius Accounting Service</li>
+              <li>Config A10 ให้ส่ง Traffic ไปเครื่องอื่น</li>
+              <li>Deploy Service Version ใหม่</li>
+              <li>Verify Logs และ Validation Result</li>
+              <li>Rotate Traffic กลับทีละเครื่อง</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-9" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">9. ENV Configuration</h2>
+        <div class="mt-5 overflow-x-auto">
+          <table class="w-full text-sm border border-slate-200">
+            <thead class="bg-slate-100"><tr><th class="p-3 text-left">ENV</th><th class="p-3 text-left">Description</th></tr></thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr><td class="p-3 font-mono">ENABLE_RADIUS_SESSION_VALIDATION</td><td class="p-3">เปิด/ปิด Session Validation</td></tr>
+              <tr><td class="p-3 font-mono">ENABLE_CLEAR_DUPLICATE_CPE_ON_START</td><td class="p-3">เปิด/ปิด Clear Duplicate CPE Logic ตอน Start</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="sec-10" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">10. Testing Plan</h2>
+        <h3 class="mt-5 font-bold text-lg">Functional Test</h3>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full text-sm border border-slate-200">
+            <thead class="bg-slate-100"><tr><th class="p-3 text-left">Test Case</th><th class="p-3 text-left">Expected Result</th></tr></thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr><td class="p-3">Start Session ใหม่</td><td class="p-3">Insert Active Session</td></tr>
+              <tr><td class="p-3">Interim ของ Active Session</td><td class="p-3">Update last_update</td></tr>
+              <tr><td class="p-3">Stop ของ Active Session</td><td class="p-3">Clear CPE IP</td></tr>
+              <tr><td class="p-3">Stop ของ Session เก่า</td><td class="p-3">Noop</td></tr>
+              <tr><td class="p-3">Interim ของ Session เก่า</td><td class="p-3">Noop</td></tr>
+              <tr><td class="p-3">Start ใหม่มาก่อน Stop เก่า</td><td class="p-3">Session ใหม่ยัง Active</td></tr>
+              <tr><td class="p-3">Duplicate CPE IP</td><td class="p-3">Clear Session เก่า</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="mt-6 font-bold text-lg">Integration Scenario</h3>
+        <pre class="mt-3 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">Start Session A
+Interim Session A
+Start Session B
+Stop Session A
+Interim Session B
+Stop Session B</pre>
+        <pre class="mt-3 rounded-xl bg-emerald-950 text-emerald-50 p-4 text-sm">Expected:
+Session B เป็น Active Session
+Stop Session A ถูก Ignore
+DDNS ไม่ถูก Clear
+Stop Session B เท่านั้นที่ Clear CPE IP</pre>
+        <h3 class="mt-6 font-bold text-lg">Regression Test</h3>
+        <ul class="mt-3 list-disc pl-6 leading-8">
+          <li>DDNS Update</li>
+          <li>Dynamic DNS</li>
+          <li>Port Forward</li>
+          <li>Email Verification</li>
+          <li>Microbilling API</li>
+          <li>Scheduled Sync</li>
+          <li>Customer Registration</li>
+          <li>Radius Accounting Receiver</li>
+        </ul>
+      </section>
+
+      <section id="sec-11" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">11. Monitoring Plan</h2>
+        <div class="mt-5 overflow-x-auto">
+          <table class="w-full text-sm border border-slate-200">
+            <thead class="bg-slate-100"><tr><th class="p-3 text-left">Metric</th><th class="p-3 text-left">Description</th></tr></thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr><td class="p-3 font-mono">Invalid Stop Count</td><td class="p-3">Stop ที่ Session ID ไม่ตรง</td></tr>
+              <tr><td class="p-3 font-mono">Invalid Interim Count</td><td class="p-3">Interim ที่ Session ID ไม่ตรง</td></tr>
+              <tr><td class="p-3 font-mono">Duplicate CPE Count</td><td class="p-3">จำนวน CPE ชน</td></tr>
+              <tr><td class="p-3 font-mono">Session Replace Count</td><td class="p-3">จำนวน Session ถูก Replace</td></tr>
+              <tr><td class="p-3 font-mono">DDNS Clear Count</td><td class="p-3">จำนวน Clear CPE</td></tr>
+              <tr><td class="p-3 font-mono">Radius Processing Error</td><td class="p-3">Error ของ Radius Service</td></tr>
+              <tr><td class="p-3 font-mono">DB Write Error</td><td class="p-3">Error ของ DB</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="sec-12" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">12. Rollback Plan</h2>
+        <div class="mt-5 grid md:grid-cols-2 gap-5">
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-5">
+            <h3 class="font-bold text-amber-900">Soft Rollback</h3>
+            <p class="mt-3 leading-7">Disable ผ่าน ENV แล้ว Restart Service</p>
+            <pre class="mt-4 rounded-lg bg-slate-950 text-slate-100 p-3 text-sm">ENABLE_RADIUS_SESSION_VALIDATION=false
+ENABLE_CLEAR_DUPLICATE_CPE_ON_START=false</pre>
+          </div>
+          <div class="rounded-xl bg-red-50 border border-red-200 p-5">
+            <h3 class="font-bold text-red-900">Full Rollback</h3>
+            <p class="mt-3 leading-7">Deploy Service Version เดิมกลับ หากต้องการ Rollback ทั้งหมด</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-13" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-slate-900">13. Node.js TypeScript Test Script</h2>
+        <p class="mt-4 leading-8">Script นี้ใช้จำลอง Radius Accounting Events เพื่อทดสอบ Session Validation Logic</p>
+        <pre class="mt-5 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm overflow-x-auto">type AccountingType = "Start" | "Stop" | "Interim-Update";
+
+interface RadiusPacket {
+  username: string;
+  sessionId: string;
+  cpeIp: string;
+  type: AccountingType;
+}
+
+interface SessionRecord {
+  username: string;
+  sessionId: string;
+  cpeIp: string;
+  status: AccountingType;
+  isActive: boolean;
+}
+
+const sessions = new Map&lt;string, SessionRecord&gt;();
+
+function getActiveSession(username: string) {
+  return [...sessions.values()].find(
+    s =&gt; s.username === username &amp;&amp; s.isActive
+  );
+}
+
+function handlePacket(packet: RadiusPacket) {
+  console.log(`\n${packet.type} ${packet.sessionId}`);
+
+  if (packet.type === "Start") {
+    for (const s of sessions.values()) {
+      if (s.username === packet.username &amp;&amp; s.isActive) {
+        s.isActive = false;
+      }
+    }
+
+    sessions.set(packet.sessionId, {
+      username: packet.username,
+      sessionId: packet.sessionId,
+      cpeIp: packet.cpeIp,
+      status: "Start",
+      isActive: true,
+    });
+
+    console.log("Start Accepted");
+    return;
+  }
+
+  const active = getActiveSession(packet.username);
+
+  if (!active || active.sessionId !== packet.sessionId) {
+    console.log("NOOP");
+    return;
+  }
+
+  if (packet.type === "Interim-Update") {
+    console.log("Interim Accepted");
+    return;
+  }
+
+  if (packet.type === "Stop") {
+    active.isActive = false;
+    console.log("Stop Accepted");
+  }
+}
+
+const username = "9612138730@fiberhome";
+
+handlePacket({ username, sessionId: "SESSION_A", cpeIp: "10.181.6.70", type: "Start" });
+handlePacket({ username, sessionId: "SESSION_A", cpeIp: "10.181.6.70", type: "Interim-Update" });
+handlePacket({ username, sessionId: "SESSION_B", cpeIp: "10.181.6.70", type: "Start" });
+handlePacket({ username, sessionId: "SESSION_A", cpeIp: "10.181.6.70", type: "Stop" });
+handlePacket({ username, sessionId: "SESSION_B", cpeIp: "10.181.6.70", type: "Interim-Update" });
+handlePacket({ username, sessionId: "SESSION_B", cpeIp: "10.181.6.70", type: "Stop" });</pre>
+        <pre class="mt-4 rounded-xl bg-slate-950 text-slate-100 p-4 text-sm">Run:
+npx tsx radius-session-test.ts
+
+Expected:
+- Stop SESSION_A ต้อง Noop
+- DDNS CPE IP ต้องไม่ถูก Clear
+- Interim SESSION_B ต้อง Update ได้
+- Stop SESSION_B เท่านั้นที่ Clear CPE IP</pre>
+      </section>
+
+      <section id="sec-14" class="rounded-2xl bg-gradient-to-br from-slate-950 to-blue-950 text-white shadow-sm p-6">
+        <h2 class="text-2xl font-bold">14. Expected Result</h2>
+        <ul class="mt-5 grid md:grid-cols-2 gap-3 text-slate-100">
+          <li class="rounded-xl bg-white/10 p-4">รองรับ Radius Packet Out-of-Order</li>
+          <li class="rounded-xl bg-white/10 p-4">ลด False Offline</li>
+          <li class="rounded-xl bg-white/10 p-4">ป้องกันการ Clear CPE IP ผิด Session</li>
+          <li class="rounded-xl bg-white/10 p-4">รองรับ Router Session Change ได้ถูกต้อง</li>
+          <li class="rounded-xl bg-white/10 p-4">ลดผลกระทบจาก Packet Delay / Packet Reorder</li>
+          <li class="rounded-xl bg-white/10 p-4">เพิ่มความเสถียรของ DDNS และ Port Forward System</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
